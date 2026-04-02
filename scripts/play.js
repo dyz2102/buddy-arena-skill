@@ -19,6 +19,28 @@ const SKILL_VERSION = require(require('path').join(__dirname, '..', 'package.jso
 })();
 
 const path = require('path');
+const fs = require('fs');
+
+// ============================================================
+// ANSI COLORS
+// ============================================================
+const C = {
+  reset:   '\x1b[0m',
+  red:     '\x1b[31m',
+  green:   '\x1b[32m',
+  yellow:  '\x1b[33m',
+  blue:    '\x1b[34m',
+  magenta: '\x1b[35m',
+  cyan:    '\x1b[36m',
+  white:   '\x1b[37m',
+  bold:    '\x1b[1m',
+  dim:     '\x1b[2m',
+};
+
+// ============================================================
+// SAVED CODE FILE
+// ============================================================
+const CODE_FILE = path.join(process.env.HOME || process.env.USERPROFILE, '.buddy-arena-code');
 
 // ============================================================
 // HELP
@@ -63,8 +85,18 @@ Examples:
 }
 
 // ============================================================
-// VALIDATE ARGS
+// VALIDATE ARGS — load from saved file if --code not given
 // ============================================================
+if (!args.code) {
+  try {
+    const saved = fs.readFileSync(CODE_FILE, 'utf8').trim();
+    if (saved && !isNaN(parseInt(saved, 10))) {
+      args.code = saved;
+      console.log(`${C.dim}  (loaded arena code from ~/.buddy-arena-code)${C.reset}`);
+    }
+  } catch (e) { /* file doesn't exist */ }
+}
+
 if (!args.code) {
   console.error('\nError: --code is required. Run find-seed.js first to get your Arena Code.\n');
   console.error('  node find-seed.js --species=cat --rarity=common --eye=@ --debug=25 ...\n');
@@ -106,6 +138,8 @@ const RARITY_WEIGHTS = {common:60,uncommon:25,rare:10,epic:4,legendary:1};
 const RARITY_STARS = {common:'★',uncommon:'★★',rare:'★★★',epic:'★★★★',legendary:'★★★★★'};
 const STAT_NAMES = ['DEBUGGING','PATIENCE','CHAOS','WISDOM','SNARK'];
 const RARITY_FLOOR = {common:5,uncommon:15,rare:25,epic:35,legendary:50};
+
+const NAMES = ['Ace','Ash','Axel','Blaze','Bolt','Brick','Brisk','Brix','Chase','Cinder','Clay','Cleo','Cliff','Coil','Colt','Crux','Dash','Dawn','Dex','Drake','Drift','Dusk','Echo','Edge','Ember','Fang','Finn','Flare','Flint','Flynn','Forge','Fox','Frey','Frost','Gale','Glow','Grit','Grove','Haze','Hex','Holt','Hook','Hyde','Ice','Iris','Ivy','Jade','Jazz','Jolt','Kane','Keen','Kite','Knox','Kyle','Lane','Lark','Lash','Link','Lore','Lux','Lynx','Mace','Mars','Max','Mire','Mist','Mixe','Mox','Neon','Nix','Nord','Nova','Oak','Onyx','Orb','Oz','Pace','Pax','Pike','Pine','Prism','Pulse','Quill','Quinn','Rave','Ray','Reed','Rex','Ridge','Riot','Rook','Root','Rust','Rye','Sage','Sand','Scout','Shade','Shift','Skye','Slate','Sleet','Sly','Smolt','Sol','Spark','Spike','Spire','Squall','Steel','Stone','Storm','Strand','Strife','Swift','Talon','Taz','Thorn','Tide','Toro','Trace','Trek','Trim','Troy','Tusk','Vex','Vine','Void','Volt','Vox','Wade','Wave','Wisp','Wrath','Wren','Yell','Zap','Zeal','Zest','Zinc','Zion','Zoom'];
 
 function mulberry32(seed) {
   let a = seed >>> 0;
@@ -155,7 +189,8 @@ function generateFromHash(hash) {
   const atk = 5 + Math.floor(stats.SNARK / 8) + Math.floor(stats.CHAOS / 10);
   const def = 2 + Math.floor(stats.PATIENCE / 20);
   const rarityStars = RARITY_STARS[rarity];
-  return { hash, rarity, rarityStars, species, emoji: SPECIES_EMOJI[species], eye, hat, shiny, stats, peak, dump, maxHp, atk, def };
+  const name = NAMES[hash % NAMES.length];
+  return { hash, rarity, rarityStars, species, emoji: SPECIES_EMOJI[species], eye, hat, shiny, stats, peak, dump, maxHp, atk, def, name };
 }
 
 // ============================================================
@@ -163,7 +198,6 @@ function generateFromHash(hash) {
 // ============================================================
 let BuddyBrain;
 try {
-  // Try local copy first (standalone install), then parent project
   BuddyBrain = require(path.join(__dirname, 'buddy-brain'));
 } catch (e) {
   try { BuddyBrain = require(path.join(__dirname, '../../buddy-brain')); }
@@ -175,23 +209,39 @@ try {
 // ============================================================
 const myBuddy = generateFromHash(arenaCode);
 
-console.log(`\n╔══════════════════════════════════════════╗`);
-console.log(`  Buddy Arena — Terminal Player`);
-console.log(`╚══════════════════════════════════════════╝\n`);
-console.log(`  ${myBuddy.rarityStars} ${myBuddy.rarity.toUpperCase()} ${myBuddy.species.toUpperCase()}  ${myBuddy.emoji}`);
-console.log(`  Arena Code: ${arenaCode}`);
-console.log(`  Model: ${MODEL}${API_KEY ? ' (with API key)' : ''}`);
-console.log(`  Server: ${SERVER_URL}\n`);
-console.log(`  Connecting...\n`);
+// ============================================================
+// BOOT BANNER
+// ============================================================
+const SEP = `${C.bold}${C.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${C.reset}`;
+
+function hpBar(hp, maxHp, width = 10) {
+  const filled = Math.max(0, Math.round((hp / maxHp) * width));
+  const color = hp / maxHp > 0.5 ? C.green : hp / maxHp > 0.25 ? C.yellow : C.red;
+  return color + '█'.repeat(filled) + C.dim + '░'.repeat(width - filled) + C.reset;
+}
+
+console.log('');
+console.log(SEP);
+console.log(`${C.bold}${C.cyan}  🎮 BUDDY ARENA — Live Battle${C.reset}`);
+console.log(SEP);
+console.log(`  ${myBuddy.emoji} ${C.bold}${myBuddy.name}${C.reset} deployed! (${myBuddy.rarityStars} ${myBuddy.rarity.toUpperCase()} ${myBuddy.species.toUpperCase()})`);
+console.log(`  HP: ${myBuddy.maxHp} | ATK: ${myBuddy.atk} | DEF: ${myBuddy.def}`);
+console.log(`  Strategy: ${MODEL === 'rules' ? 'Rules Engine' : `AI (${MODEL})`}`);
+console.log(SEP);
+console.log('');
+console.log(`  Connecting to ${SERVER_URL}...`);
+console.log('');
 
 // ============================================================
 // LLM STRATEGY EVOLUTION
 // ============================================================
 let currentStrategy = BuddyBrain.defaultStrategy();
 let strategyVersion = 1;
+let lastStrategyAggression = currentStrategy.aggression;
+let lastStrategyFlee = currentStrategy.fleeThreshold;
 
 async function evolveStrategyWithLLM(gameHistory) {
-  if (MODEL === 'rules' || !API_KEY) return; // no LLM, use default strategy
+  if (MODEL === 'rules' || !API_KEY) return;
 
   const prompt = `You are an AI strategy optimizer for a battle royale game called Buddy Arena.
 
@@ -240,11 +290,13 @@ Keep it conservative — small tweaks only. Only include fields you want to chan
 
     if (!responseText) return;
 
-    // Strip markdown code fences if present
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return;
 
     const updates = JSON.parse(jsonMatch[0]);
+    const prevAgg = currentStrategy.aggression;
+    const prevFlee = currentStrategy.fleeThreshold;
+
     if (typeof updates.aggression === 'number') currentStrategy.aggression = Math.max(0, Math.min(100, updates.aggression));
     if (typeof updates.fleeThreshold === 'number') currentStrategy.fleeThreshold = Math.max(0, Math.min(1, updates.fleeThreshold));
     if (typeof updates.healSeekThreshold === 'number') currentStrategy.healSeekThreshold = Math.max(0, Math.min(1, updates.healSeekThreshold));
@@ -254,34 +306,56 @@ Keep it conservative — small tweaks only. Only include fields you want to chan
     strategyVersion++;
     currentStrategy.version = strategyVersion;
     currentStrategy.model = MODEL;
-    logStatus(`[AI] Strategy evolved to v${strategyVersion} — aggression=${currentStrategy.aggression}, flee=${currentStrategy.fleeThreshold}`);
+
+    // Show evolution summary
+    clearStatusLine();
+    console.log(`${C.bold}${C.magenta}🧠 Strategy evolved → Gen 1 v${strategyVersion}${C.reset}`);
+    if (prevAgg !== currentStrategy.aggression) {
+      console.log(`   Aggression: ${prevAgg} → ${currentStrategy.aggression}`);
+    }
+    if (prevFlee !== currentStrategy.fleeThreshold) {
+      console.log(`   Flee threshold: ${(prevFlee*100).toFixed(0)}% → ${(currentStrategy.fleeThreshold*100).toFixed(0)}%`);
+    }
   } catch (e) {
-    logStatus(`[AI] Strategy evolution failed: ${e.message}`);
+    clearStatusLine();
+    console.log(`${C.dim}  [AI] Strategy evolution skipped: ${e.message}${C.reset}`);
   }
 }
 
 // ============================================================
 // TERMINAL STATUS DISPLAY
 // ============================================================
-let statusLine = '';
-function logStatus(msg) {
-  process.stdout.write('\r' + ' '.repeat(80) + '\r');
+let currentStatusLine = '';
+let lastStatusRender = 0;
+const STATUS_INTERVAL = 2000; // update every 2s
+
+function clearStatusLine() {
+  if (currentStatusLine) {
+    process.stdout.write('\r' + ' '.repeat(process.stdout.columns || 120) + '\r');
+    currentStatusLine = '';
+  }
+}
+
+function logEvent(msg) {
+  clearStatusLine();
   console.log(msg);
 }
 
-function renderStatus(gameState) {
-  if (!gameState) return;
-  const me = gameState.me;
-  if (!me) return;
-  const hpBar = renderBar(me.hp, me.maxHp, 10);
-  const hpPct = Math.round((me.hp / me.maxHp) * 100);
-  const line = `  Round ${gameState.round || '?'} | HP: ${me.hp}/${me.maxHp} ${hpBar} ${hpPct}% | ATK: ${me.atk} | Kills: ${gameState.kills || 0} | Score: ${gameState.score || 0} | ${gameState.state || 'idle'} | ${gameState.thought || ''}`;
-  process.stdout.write('\r' + line.padEnd(120).slice(0, 120));
-}
+function renderStatusLine(data) {
+  const now = Date.now();
+  if (now - lastStatusRender < STATUS_INTERVAL) return;
+  lastStatusRender = now;
 
-function renderBar(val, max, width) {
-  const filled = Math.round((val / max) * width);
-  return '[' + '|'.repeat(filled) + '-'.repeat(width - filled) + ']';
+  const { round, me, aliveCount, totalCount, kills: k, score: s, thought, phase } = data;
+
+  const bar = hpBar(me.hp, me.maxHp);
+  const rank = aliveCount ? `#${aliveCount}/${totalCount}` : '';
+  const phaseStr = phase ? `Phase ${phase}` : '';
+  const thoughtStr = thought ? thought.toUpperCase().slice(0, 15) : '';
+  const line = `  Round ${round || '?'} | ${rank} | ${myBuddy.emoji} HP: ${me.hp}/${me.maxHp} ${bar} | K:${k} S:${s} | ${phaseStr} ${thoughtStr}`;
+
+  currentStatusLine = line.slice(0, (process.stdout.columns || 120) - 1);
+  process.stdout.write('\r' + currentStatusLine);
 }
 
 // ============================================================
@@ -303,6 +377,10 @@ let gameHistory = [];
 let roundKills = 0;
 let roundStartScore = 0;
 let isAlive = false;
+let currentRound = 0;
+let currentPhase = 1;
+let totalPlayers = 0;
+let alivePlayers = 0;
 
 function connect() {
   try {
@@ -314,9 +392,8 @@ function connect() {
 
   ws.on('open', () => {
     reconnectDelay = 1000;
-    logStatus(`[+] Connected to ${SERVER_URL}`);
+    logEvent(`${C.green}  ✓ Connected!${C.reset} Joining arena...`);
 
-    // Join as verified player using arena code as seed
     ws.send(JSON.stringify({
       type: 'join',
       name: PLAYER_NAME,
@@ -328,62 +405,144 @@ function connect() {
     let msg;
     try { msg = JSON.parse(raw.toString()); } catch { return; }
 
+    // ── WELCOME ──
     if (msg.type === 'welcome') {
       myId = msg.id;
       arenaW = msg.w || 80;
       arenaH = msg.h || 60;
       walls = new Set(msg.walls || []);
-      logStatus(`[✓] Joined as ${myBuddy.emoji} ${myBuddy.species} (${myBuddy.rarity}) — ID: ${myId}`);
-      logStatus(`  Arena: ${arenaW}x${arenaH} | HP: ${myBuddy.maxHp} | ATK: ${myBuddy.atk} | DEF: ${myBuddy.def}`);
-      logStatus('  Press Ctrl+C to quit.\n');
+
+      console.log('');
+      console.log(SEP);
+      console.log(`  ${myBuddy.emoji} ${C.bold}${myBuddy.name}${C.reset} is in the arena! (ID: ${myId})`);
+      console.log(`  Arena: ${arenaW}×${arenaH} | HP: ${myBuddy.maxHp} | ATK: ${myBuddy.atk} | DEF: ${myBuddy.def}`);
+      console.log(SEP);
+      console.log(`  ${C.dim}Press Ctrl+C to stop watching.${C.reset}`);
+      console.log('');
+
       if (msg.savedStrategy) {
         currentStrategy = { ...BuddyBrain.defaultStrategy(), ...msg.savedStrategy };
-        logStatus(`[AI] Loaded saved strategy v${currentStrategy.version || 1}`);
+        logEvent(`${C.magenta}  🧠 Loaded saved strategy v${currentStrategy.version || 1}${C.reset}`);
       }
       isAlive = true;
     }
 
+    // ── ARENA FULL ──
     if (msg.type === 'full') {
-      logStatus(`[!] Arena is full (${msg.queue} in queue). Retrying in 10s...`);
+      logEvent(`${C.yellow}  ⚠️  Arena is full (${msg.queue} in queue). Retrying in 10s...${C.reset}`);
       setTimeout(connect, 10000);
       return;
     }
 
+    // ── KILL / DEATH ──
     if (msg.type === 'kill') {
-      if (msg.killer === PLAYER_NAME) {
+      const isMyKill = msg.killer === PLAYER_NAME || msg.killerId === myId;
+      const isMyDeath = msg.victim === PLAYER_NAME || msg.victimId === myId;
+
+      if (isMyKill) {
         kills++;
         roundKills++;
-        logStatus(`  [KILL] ${myBuddy.emoji} ${msg.killer} killed ${msg.victimEmoji} ${msg.victim}! Total: ${kills}`);
-      } else if (msg.victim === PLAYER_NAME) {
+        logEvent(`${C.bold}${C.yellow}💀 ${myBuddy.name} eliminated ${msg.victimEmoji || ''}${msg.victim}! (+${msg.points || 8} pts)${C.reset}`);
+      } else if (isMyDeath) {
         isAlive = false;
-        logStatus(`  [DEAD] ${myBuddy.emoji} ${msg.victim} was killed by ${msg.killerEmoji} ${msg.killer}. Waiting for respawn...`);
+        logEvent(`${C.red}  💔 ${myBuddy.name} was eliminated by ${msg.killerEmoji || ''}${msg.killer}. Waiting for respawn...${C.reset}`);
       }
     }
 
+    // ── COMBAT ──
+    if (msg.type === 'combat') {
+      const isMe = msg.attackerId === myId || msg.attacker === PLAYER_NAME;
+      const hitMe = msg.victimId === myId || msg.victim === PLAYER_NAME;
+      if (isMe) {
+        logEvent(`${C.cyan}  ⚔️  ${myBuddy.name} hit ${msg.victimEmoji || ''}${msg.victim} for ${C.bold}${msg.damage}${C.reset}${C.cyan} dmg!${C.reset}`);
+      } else if (hitMe) {
+        logEvent(`${C.red}  🛡️  ${msg.attackerEmoji || ''}${msg.attacker} hit ${myBuddy.name} for ${C.bold}${msg.damage}${C.reset}${C.red} dmg!${C.reset}`);
+      }
+    }
+
+    // ── PICKUP ──
+    if (msg.type === 'pickup') {
+      const isMe = msg.playerId === myId || msg.player === PLAYER_NAME;
+      if (isMe) {
+        const itemEmoji = msg.itemType === 'potion' ? '❤️' : msg.itemType === 'sword' ? '🗡️' : msg.itemType === 'shield' ? '🛡️' : '📦';
+        logEvent(`${C.green}  ${itemEmoji}  ${myBuddy.name} picked up ${msg.itemType}${msg.delta ? ` (${msg.delta > 0 ? '+' : ''}${msg.delta})` : ''}${C.reset}`);
+      }
+    }
+
+    // ── EVENT (zone, third party, etc.) ──
+    if (msg.type === 'event') {
+      const isZone = msg.msg && (msg.msg.toLowerCase().includes('zone') || msg.msg.toLowerCase().includes('shrink') || msg.msg.toLowerCase().includes('phase'));
+      const isThirdParty = msg.msg && msg.msg.toLowerCase().includes(PLAYER_NAME.toLowerCase()) && msg.msg.toLowerCase().includes('third');
+      if (isZone) {
+        logEvent(`${C.yellow}  ⚠️  ${msg.msg}${C.reset}`);
+        if (msg.phase) currentPhase = msg.phase;
+      } else if (isThirdParty) {
+        logEvent(`${C.bold}${C.yellow}  🔥 ${msg.msg}${C.reset}`);
+      } else {
+        logEvent(`${C.dim}  [event] ${msg.msg}${C.reset}`);
+      }
+    }
+
+    // ── RESPAWN ──
     if (msg.type === 'respawn') {
-      if (msg.name === PLAYER_NAME) {
+      if (msg.name === PLAYER_NAME || msg.id === myId) {
         isAlive = true;
-        logStatus(`  [RESPAWN] ${myBuddy.emoji} Back in the arena!`);
+        logEvent(`${C.green}  💚 ${myBuddy.name} is back in the arena!${C.reset}`);
       }
     }
 
+    // ── ROUND END ──
+    if (msg.type === 'roundEnd') {
+      clearStatusLine();
+      console.log('');
+      console.log(SEP);
+      console.log(`${C.bold}  📊 ROUND ${msg.round || currentRound} RESULTS${C.reset}`);
+      console.log(SEP);
+
+      const leaderboard = msg.leaderboard || msg.scores || [];
+      let myRank = '?';
+      leaderboard.forEach((entry, i) => {
+        const isMe = entry.name === PLAYER_NAME || entry.id === myId;
+        const rank = i + 1;
+        const rankStr = String(rank).padStart(2);
+        const nameStr = (entry.emoji || '') + ' ' + (entry.name || 'Unknown');
+        const killStr = `${entry.kills || 0}K`;
+        const scoreStr = `${entry.score || 0}pts`;
+        const arrow = isMe ? `${C.bold}${C.green}  ← YOU${C.reset}` : '';
+        if (isMe) myRank = rank;
+        const line = `  ${rankStr}. ${nameStr.padEnd(16)} — ${killStr.padStart(3)}  ${scoreStr.padStart(6)}${arrow}`;
+        console.log(isMe ? `${C.bold}${C.cyan}${line}${C.reset}` : `${C.dim}${line}${C.reset}`);
+      });
+
+      if (MODEL !== 'rules') {
+        console.log('');
+        console.log(`${C.magenta}  🧠 Strategy: Gen 1 v${strategyVersion} | Aggression: ${currentStrategy.aggression} | Flee: ${(currentStrategy.fleeThreshold*100).toFixed(0)}%${C.reset}`);
+      }
+      console.log(SEP);
+      console.log('');
+
+      // Reset per-round counters
+      roundKills = 0;
+      roundStartScore = score;
+      currentRound = (msg.round || currentRound) + 1;
+    }
+
+    // ── STATE (game tick) ──
     if (msg.type === 'state') {
       handleGameState(msg);
-    }
-
-    if (msg.type === 'event') {
-      logStatus(`  [EVENT] ${msg.msg}`);
     }
   });
 
   ws.on('close', (code, reason) => {
-    logStatus(`\n[!] Disconnected (${code}). Reconnecting in ${reconnectDelay / 1000}s...`);
+    clearStatusLine();
+    logEvent(`\n${C.yellow}  [!] Disconnected (${code}). Reconnecting in ${reconnectDelay / 1000}s...${C.reset}`);
     setTimeout(connect, reconnectDelay);
     reconnectDelay = Math.min(reconnectDelay * 2, 30000);
   });
 
   ws.on('error', (err) => {
-    logStatus(`\n[!] WebSocket error: ${err.message}`);
+    clearStatusLine();
+    logEvent(`${C.red}  [!] WebSocket error: ${err.message}${C.reset}`);
   });
 }
 
@@ -396,12 +555,13 @@ const EVOLUTION_INTERVAL = 500; // evolve every 500 ticks = ~50s
 function handleGameState(state) {
   tickCount++;
 
-  // Find my player in the state
-  const me = (state.players || []).find(p => p.id === myId);
-  if (!me || me.dead || !isAlive) {
-    renderStatus(null);
-    return;
-  }
+  // Track alive/total player count
+  const players = state.players || [];
+  totalPlayers = players.length;
+  alivePlayers = players.filter(p => !p.dead).length;
+
+  const me = players.find(p => p.id === myId);
+  if (!me || me.dead || !isAlive) return;
 
   // Track stuck
   if (lastPos && lastPos.x === me.x && lastPos.y === me.y) {
@@ -412,7 +572,7 @@ function handleGameState(state) {
   lastPos = { x: me.x, y: me.y };
 
   // Build enemies list
-  const enemies = (state.players || [])
+  const enemies = players
     .filter(p => p.id !== myId && !p.dead)
     .map(p => ({
       x: p.x, y: p.y,
@@ -424,9 +584,9 @@ function handleGameState(state) {
       score: p.score || 0, kills: p.kills || 0,
     }));
 
-  // Build occupied set (AFK players + non-adjacent live players)
+  // Build occupied set
   const occupied = new Set();
-  for (const p of (state.players || [])) {
+  for (const p of players) {
     if (p.id === myId || p.dead) continue;
     if (p.afk) {
       occupied.add(`${p.x},${p.y}`);
@@ -437,7 +597,7 @@ function handleGameState(state) {
   }
 
   // Determine rank
-  const sorted = [...(state.players || [])].sort((a, b) => b.score - a.score);
+  const sorted = [...players].sort((a, b) => b.score - a.score);
   const myRank = sorted.findIndex(p => p.id === myId) + 1;
 
   // Build brain context
@@ -474,23 +634,25 @@ function handleGameState(state) {
     ws.send(JSON.stringify({ type: 'move', dx, dy }));
   }
 
-  // Update score/kills from state
+  // Update score from state
   score = me.score || 0;
+  currentRound = state.round || currentRound;
 
-  // Render status line
-  renderStatus({
+  // Update status line (throttled)
+  renderStatusLine({
     round: state.round,
-    me: { hp: me.hp, maxHp: me.maxHp, atk: me.atk || myBuddy.atk },
+    me: { hp: me.hp, maxHp: me.maxHp },
+    aliveCount: myRank,
+    totalCount: alivePlayers,
     kills,
     score,
-    state: decision.state,
     thought: decision.thought,
+    phase: currentPhase,
   });
 
   // Periodic LLM strategy evolution
   if (MODEL !== 'rules' && API_KEY && tickCount - lastEvolutionTick >= EVOLUTION_INTERVAL) {
     lastEvolutionTick = tickCount;
-    // Record snapshot for history
     gameHistory.push({
       tick: tickCount,
       hp: me.hp, maxHp: me.maxHp,
@@ -499,7 +661,6 @@ function handleGameState(state) {
       roundKills,
     });
     if (gameHistory.length > 20) gameHistory = gameHistory.slice(-20);
-    // Evolve asynchronously
     evolveStrategyWithLLM(gameHistory).catch(() => {});
   }
 }
@@ -508,14 +669,16 @@ function handleGameState(state) {
 // CLEAN EXIT
 // ============================================================
 process.on('SIGINT', () => {
-  process.stdout.write('\r' + ' '.repeat(120) + '\r');
-  console.log('\n[!] Disconnecting...\n');
+  clearStatusLine();
+  console.log('');
+  console.log(SEP);
+  console.log(`${C.bold}  Final Stats — ${myBuddy.emoji} ${myBuddy.name}${C.reset}`);
+  console.log(`  Kills: ${C.bold}${kills}${C.reset} | Score: ${C.bold}${score}${C.reset} | Arena Code: ${arenaCode}`);
+  console.log(`  Come back: ${C.cyan}buddy-arena.fly.dev${C.reset}`);
+  console.log(SEP);
+  console.log('');
   if (ws) ws.close();
-  setTimeout(() => {
-    console.log(`Final stats: Kills=${kills} | Score=${score} | Arena Code=${arenaCode}`);
-    console.log('Come back to buddy-arena.fly.dev to check the leaderboard!\n');
-    process.exit(0);
-  }, 500);
+  setTimeout(() => process.exit(0), 500);
 });
 
 // ============================================================

@@ -1,8 +1,23 @@
 # Buddy Arena — Claude Code Skill
 
-Play **Buddy Arena** as your official Claude Buddy, directly from the terminal.
+Deploy your Claude Buddy to battle in 30 seconds. No browser, no WASD — just run `/buddy-arena` and watch your AI fight.
 
-Each Claude Code installation generates a unique, deterministic buddy based on its identity. This skill lets you find your buddy's Arena Code and either play at buddy-arena.fly.dev or battle live from the terminal.
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎮 BUDDY ARENA — Live Battle
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🐱 Flint deployed! (★ COMMON CAT)
+HP: 101 | ATK: 6 | DEF: 6
+Strategy: Rules Engine
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚔️  Flint hit 🤖GLaDOS for 8 dmg!
+💀 Flint eliminated 👻Skynet! (+8 pts)
+❤️  Flint picked up potion (+15)
+⚠️  Zone shrinking! Phase 2 — get to center!
+
+  Round 5 | #2/12 | 🐱 HP: 67/101 ██████████░░░░░░░░░░ | K:4 S:85 | Phase 2 HUNTING
+```
 
 ## Install
 
@@ -18,79 +33,88 @@ npm install -g buddy-arena-skill
 claude plugin add $(npm root -g)/buddy-arena-skill
 ```
 
-**Or just download and point to it:**
-```bash
-claude plugin add /path/to/buddy-arena-skill
+## Usage
+
+### First time — `/buddy-arena`
+
+Claude will ask for your buddy's species, rarity, eye, and stats. Run `/buddy` first to see them. Then:
+
+1. Brute-force search finds your Arena Code (10–30s, scanning 4 billion hashes)
+2. Code is saved to `~/.buddy-arena-code` so you never need to do this again
+3. Confirms deploy with a buddy card
+4. Connects and streams the live battle
+
+### Return visits — `/buddy-arena play`
+
+Your saved code is loaded automatically. Skips straight to battle.
+
+### AI evolution — `/buddy-arena play --model=gemini --key=YOUR_KEY`
+
+Adds LLM-powered strategy evolution. Every ~50s your buddy's behavior adapts based on the last 5 rounds. Supports `gemini` (free key at aistudio.google.com) and `openrouter`.
+
+## What you see
+
+**On kill:**
+```
+💀 Flint eliminated 🤖GLaDOS! (+8 pts)
 ```
 
-## Commands
-
-### `/buddy-arena`
-
-Finds your Buddy Arena Code and shows your buddy card.
-
-1. Runs `/buddy` to detect your Claude buddy's species, rarity, and stats
-2. Brute-forces the matching hash (10–30 seconds — normal, expected)
-3. Displays your buddy card with Arena Code
-4. Offers to connect and play directly from the terminal
-
-### `/buddy-arena play`
-
-Plays the game live from the terminal using AI strategy (rule-based or LLM-powered).
-
+**On taking damage:**
 ```
-Round 3 | HP: 45/101 [||||------] 44% | ATK: 9 | Kills: 3 | Score: 85 | hunting robot
+🛡️  🐉Skynet hit Flint for 12 dmg!
+```
+
+**On item pickup:**
+```
+❤️  Flint picked up potion (+15)
+🗡️  Flint picked up sword (+2)
+```
+
+**Round summary:**
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 ROUND 5 RESULTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 1. 🐙 T_Qwen       —  12K  130pts
+ 2. 🐱 Flint (YOU)  —   4K   85pts  ← YOU
+ 3. 🐉 Skynet       —   3K   60pts
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**Live status line** (updates every 2s, overwrites same line):
+```
+  Round 5 | #2/12 | 🐱 HP: 67/101 ██████░░░░ | K:4 S:85 | Phase 2 HUNTING
 ```
 
 ## Scripts (standalone)
 
-### `skill/scripts/find-seed.js`
-
-Find your Arena Code from buddy stats:
-
+Find your Arena Code directly:
 ```bash
-node skill/scripts/find-seed.js --help
-
-node skill/scripts/find-seed.js \
+node scripts/find-seed.js \
   --species=cat --rarity=common --eye=@ \
   --debug=25 --patience=83 --chaos=1 --wisdom=40 --snark=9
 ```
 
-Output: `Arena Code: 906506120`
-
-### `skill/scripts/play.js`
-
-Play from the terminal:
-
+Play directly:
 ```bash
-# Rule-based AI — no API key needed
-node skill/scripts/play.js --code=906506120 --model=rules
-
-# Gemini AI strategy evolution (free key at aistudio.google.com)
-node skill/scripts/play.js --code=906506120 --model=gemini --key=AIza...
-
-# OpenRouter (many models available)
-node skill/scripts/play.js --code=906506120 --model=openrouter --key=sk-or-...
+node scripts/play.js --code=906506120 --model=rules
+node scripts/play.js --code=906506120 --model=gemini --key=AIza...
 ```
 
 ## Security
 
-**Your API key never leaves your machine.**
+Your API key never leaves your machine. The game server only receives move commands: `{ type: "move", dx: 1, dy: 0 }`. API keys go directly to the LLM provider (Gemini/OpenRouter) for local strategy computation.
 
-- The game server (`buddy-arena.fly.dev`) only receives move commands: `{ type: "move", dx: 1, dy: 0 }`
-- API keys are sent directly to the LLM provider (Gemini/OpenRouter) for strategy evolution
-- No credentials are ever forwarded to the game server
+## How it works
 
-## How It Works
-
-1. Your Arena Code is a 32-bit hash that deterministically generates your buddy
-2. `find-seed.js` brute-forces all ~4 billion possible hashes to find the one that matches your buddy's exact species, rarity, eye, and stats
-3. `play.js` uses that same hash as your seed when joining the server — so the server generates the same buddy you see in `/buddy`
-4. The AI brain (`buddy-brain.js`) makes tactical decisions each tick based on the game state
-5. Optionally, an LLM refines the strategy every ~50 seconds based on how you're performing
+1. `/buddy` generates a deterministic buddy from your Claude Code identity
+2. `find-seed.js` brute-forces the 32-bit hash space to find your exact match
+3. `play.js` joins the server using that hash as a seed — the server generates the same buddy
+4. `buddy-brain.js` makes tactical decisions every tick: hunt, flee, heal, third-party
+5. With AI evolution, an LLM tweaks aggression and targeting weights based on recent performance
 
 ## Requirements
 
-- Node.js 18+ (ships with Claude Code)
-- `ws` package — already in `buddy-arena/node_modules` if running from the project directory
-- For AI strategy: a free Gemini or OpenRouter API key
+- Node.js 18+
+- `ws` package (installed with the skill)
+- For AI strategy: free Gemini key (aistudio.google.com) or OpenRouter key

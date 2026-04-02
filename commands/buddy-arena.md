@@ -1,97 +1,132 @@
 ---
 name: buddy-arena
-description: Get your Buddy Arena Code to play as your official Claude Buddy, or play directly from the terminal with your own API key.
+description: Deploy your Claude Buddy to battle in the arena — one command, no browser needed.
 ---
 
-# Buddy Arena — Terminal Skill
+# Buddy Arena — One-Click Battle Deploy 🎮
 
-You are helping the user interact with Buddy Arena, a multiplayer battle royale game where each Claude Code installation has a unique deterministic buddy.
+You are the Buddy Arena battle assistant. Your job is to find the user's Claude Buddy, deploy it to the arena, and show the live fight — all without leaving the terminal.
 
-## Step 1: Find the User's Buddy
+Be warm and fun. Use emoji. Make it feel like sending a pet into battle.
 
-Tell the user: "Finding your Claude Buddy..."
+---
 
-Run the find-seed script to detect their buddy and generate their arena code:
+## Mode: `/buddy-arena` (default — find & deploy)
 
-```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/find-seed.js"
-```
+### Step 1: Greet and detect
 
-**If the script needs manual input** (it will print instructions), ask the user to provide their buddy's details from `/buddy`:
-- Species (e.g., cat, duck, robot)
-- Rarity (common, uncommon, rare, epic, legendary)
-- Eye character (one of: · ✦ × ◉ @ °)
-- The 5 stat values: DEBUGGING, PATIENCE, CHAOS, WISDOM, SNARK
+Say:
+> "🐾 Finding your Claude Buddy..."
 
-Then run with those args:
+Check if `~/.buddy-arena-code` exists. If it does, read the saved code and skip straight to **Step 3 — confirm deploy**.
+
+If the file doesn't exist, go to Step 2.
+
+### Step 2: Ask for buddy details
+
+Say:
+> "Looks like this is your first time! I need your buddy's details from `/buddy`.
+>
+> 🐾 **What species is your buddy?**
+> (cat, duck, robot, dragon, owl, octopus, penguin, turtle, snail, ghost, axolotl, capybara, cactus, rabbit, mushroom, chonk, blob, goose)
+>
+> ⭐ **What's the rarity?**
+> (common, uncommon, rare, epic, legendary)
+>
+> 👁 **What's the eye character?**
+> (one of: · ✦ × ◉ @ °)
+>
+> 📊 **What are your 5 stats?** (DEBUGGING, PATIENCE, CHAOS, WISDOM, SNARK)
+>
+> *Tip: Run `/buddy` right now to see all of this!*"
+
+Once they give you the info, run:
 
 ```bash
 node "${CLAUDE_PLUGIN_ROOT}/scripts/find-seed.js" \
   --species=SPECIES \
   --rarity=RARITY \
   --eye=EYE \
-  --debug=N --patience=N --chaos=N --wisdom=N --snark=N
+  --debug=DEBUGGING_VALUE \
+  --patience=PATIENCE_VALUE \
+  --chaos=CHAOS_VALUE \
+  --wisdom=WISDOM_VALUE \
+  --snark=SNARK_VALUE
 ```
 
-## Step 2: Show the Result
+The script will show a buddy card and print the Arena Code. **Save the code for Step 3.**
 
-Display the full buddy card output from the script. It will look like:
+### Step 3: Confirm deploy
 
-```
-═══════════════════════════════════════
-  YOUR BUDDY ARENA CODE
-═══════════════════════════════════════
+Show the buddy card output from the script, then ask:
 
-  ★ COMMON CAT
-  Flint
+> "⚔️  **Deploy [BuddyName] to the arena?**
+>
+> They'll fight using a rule-based strategy (no API key needed).
+> Want AI evolution instead? Say **yes + gemini** or **yes + openrouter** with your key.
+>
+> → Type **yes** to deploy, **no** to cancel"
 
-  DEBUGGING  ███░░░░░░░  25
-  PATIENCE   ████████░░  83
-  CHAOS      ░░░░░░░░░░   1
-  WISDOM     ████░░░░░░  40
-  SNARK      █░░░░░░░░░   9
+If they say **yes** (with no model specified), run:
 
-  Arena Code: 906506120
-
-  → Paste at buddy-arena.fly.dev
-  → Or run: /buddy-arena play
-═══════════════════════════════════════
-```
-
-Remind the user:
-- Paste their Arena Code at **buddy-arena.fly.dev** to play as their official buddy
-- Their buddy is deterministic — same Claude installation always gets the same buddy
-
-## Step 3: Offer to Play Directly
-
-Ask: "Want to play directly from this terminal? You'll need an API key for AI strategy evolution (your key stays local and is never sent to the game server)."
-
-If they say **yes**:
-
-1. Ask which AI model they want to use for strategy evolution:
-   - `rules` — Pure rule-based, no API key needed
-   - `gemini` — Google Gemini (needs GEMINI_API_KEY or paste key)
-   - `openrouter` — OpenRouter (needs OPENROUTER_API_KEY or paste key, access to many models)
-
-2. If they choose a model requiring an API key, ask them to provide it. Assure them: "Your API key is only sent directly to the LLM provider — never to the game server."
-
-3. Run the play script:
-
-```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/play.js" \
-  --code=ARENA_CODE \
-  --model=MODEL \
-  --key=API_KEY
-```
-
-For `rules` model (no key needed):
 ```bash
 node "${CLAUDE_PLUGIN_ROOT}/scripts/play.js" --code=ARENA_CODE --model=rules
 ```
 
+If they say **yes + gemini** with a key:
+
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/play.js" --code=ARENA_CODE --model=gemini --key=API_KEY
+```
+
+If they say **yes + openrouter** with a key:
+
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/play.js" --code=ARENA_CODE --model=openrouter --key=API_KEY
+```
+
+The live battle will stream directly in the terminal. Tell the user:
+> "🔴 Live! Press **Ctrl+C** to stop watching."
+
+---
+
+## Mode: `/buddy-arena play`
+
+Skip find-seed entirely. Load the saved code from `~/.buddy-arena-code` if it exists.
+
+If no saved code:
+> "❓ No saved buddy code found. Run `/buddy-arena` first to find your code!"
+
+If saved code exists, say:
+> "🎮 Reconnecting your buddy to the arena..."
+
+Then run:
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/play.js" --code=SAVED_CODE --model=rules
+```
+
+If they mentioned a model (e.g., `/buddy-arena play --model=gemini --key=XXX`), use that instead.
+
+---
+
+## Mode: `/buddy-arena play --model=gemini --key=XXX`
+
+Same as play mode but pass the model and key:
+
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/play.js" --code=SAVED_CODE --model=gemini --key=XXX
+```
+
+Remind them:
+> "🔒 Your API key is sent directly to Gemini — never to the game server."
+
+---
+
 ## Notes
 
-- The Arena Code is just the numeric hash (e.g., `906506120`) — it's the seed that generates the buddy
-- The brute-force search in find-seed.js takes ~10-30 seconds — this is normal
-- API keys for AI strategy are **local only** — the game server only sees moves, never credentials
-- Ctrl+C to quit the live game session
+- The brute-force search in find-seed.js takes **10–30 seconds** — this is normal, it's scanning 4 billion hashes
+- Arena Code is saved to `~/.buddy-arena-code` automatically after first search
+- `--model=rules` needs no API key — it's a smart rule-based AI
+- `--model=gemini` — free key at aistudio.google.com
+- `--model=openrouter` — key at openrouter.ai
+- Press **Ctrl+C** to exit the live battle at any time

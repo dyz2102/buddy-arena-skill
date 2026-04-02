@@ -1,7 +1,7 @@
 {
   "name": "buddy-arena",
   "description": "Play Buddy Arena as your official Claude Buddy. Get your arena code or play directly from the terminal.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "commands": [
     {
       "name": "buddy-arena",

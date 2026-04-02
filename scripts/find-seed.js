@@ -6,6 +6,12 @@
 
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
+
+// Saved code file
+const CODE_FILE = path.join(process.env.HOME || process.env.USERPROFILE, '.buddy-arena-code');
+
 // ============================================================
 // ALGORITHM CONSTANTS (must stay in sync with buddy-algorithm.js)
 // ============================================================
@@ -196,22 +202,24 @@ const hasStats = Object.values(targetStats).some(v => v !== null);
 // ============================================================
 // BRUTE FORCE SEARCH
 // ============================================================
-console.log(`\nSearching for ${targetRarity} ${targetSpecies}${targetEye ? ' (eye: ' + targetEye + ')' : ''}...`);
-console.log('This may take 10-30 seconds.\n');
+console.log(`\n  🔍 Searching for ${targetRarity} ${targetSpecies}${targetEye ? ' (eye: ' + targetEye + ')' : ''}...`);
+console.log('  This takes 10–30 seconds — scanning up to 4 billion hashes.\n');
 
 const TOTAL = 4294967296; // 2^32
 let found = null;
-let checked = 0;
 const startTime = Date.now();
 let lastPrint = startTime;
 
-// Progress bar update every ~2 seconds
+// Animated progress bar update every ~1 second
 function printProgress(hash) {
   const now = Date.now();
-  if (now - lastPrint > 2000) {
-    const pct = ((hash / TOTAL) * 100).toFixed(1);
+  if (now - lastPrint > 1000) {
+    const pct = (hash / TOTAL) * 100;
     const elapsed = ((now - startTime) / 1000).toFixed(0);
-    process.stdout.write(`\r  Searching... ${pct}% (${elapsed}s elapsed)`);
+    const barWidth = 20;
+    const filled = Math.round((pct / 100) * barWidth);
+    const bar = '█'.repeat(filled) + '░'.repeat(barWidth - filled);
+    process.stderr.write(`\r  Searching for your buddy... ${bar} ${pct.toFixed(1)}% (${elapsed}s)`);
     lastPrint = now;
   }
 }
@@ -298,6 +306,11 @@ const cardNumber = Math.floor(found.hash % 7128) + 1;
 const NAMES = ['Ace','Ash','Axel','Blaze','Bolt','Brick','Brisk','Brix','Chase','Cinder','Clay','Cleo','Cliff','Coil','Colt','Crux','Dash','Dawn','Dex','Drake','Drift','Dusk','Echo','Edge','Ember','Fang','Finn','Flare','Flint','Flynn','Forge','Fox','Frey','Frost','Gale','Glow','Grit','Grove','Haze','Hex','Holt','Hook','Hyde','Ice','Iris','Ivy','Jade','Jazz','Jolt','Kane','Keen','Kite','Knox','Kyle','Lane','Lark','Lash','Link','Lore','Lux','Lynx','Mace','Mars','Max','Mire','Mist','Mixe','Mox','Neon','Nix','Nord','Nova','Oak','Onyx','Orb','Oz','Pace','Pax','Pike','Pine','Prism','Pulse','Quill','Quinn','Rave','Ray','Reed','Rex','Ridge','Riot','Rook','Root','Rust','Rye','Sage','Sand','Scout','Shade','Shift','Skye','Slate','Sleet','Sly','Smolt','Sol','Spark','Spike','Spire','Squall','Steel','Stone','Storm','Strand','Strife','Swift','Talon','Taz','Thorn','Tide','Toro','Trace','Trek','Trim','Troy','Tusk','Vex','Vine','Void','Volt','Vox','Wade','Wave','Wisp','Wrath','Wren','Yell','Zap','Zeal','Zest','Zinc','Zion','Zoom'];
 const buddyName = NAMES[found.hash % NAMES.length];
 
+// Save code to ~/.buddy-arena-code for quick reuse
+try {
+  fs.writeFileSync(CODE_FILE, String(found.hash), 'utf8');
+} catch (e) { /* ignore write errors */ }
+
 console.log('═══════════════════════════════════════');
 console.log('  YOUR BUDDY ARENA CODE');
 console.log('═══════════════════════════════════════');
@@ -320,5 +333,6 @@ if (found.shiny) console.log('  ✨ SHINY — rare variant!');
 if (found.hat !== 'none') console.log(`  Hat: ${found.hat}`);
 console.log(`  Eye: ${found.eye}  |  Card #${cardNumber}`);
 console.log(`  (Found in ${elapsed}s)`);
+console.log(`  ✅ Code saved to ~/.buddy-arena-code`);
 console.log('═══════════════════════════════════════');
 console.log('');
