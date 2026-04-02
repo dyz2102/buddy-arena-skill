@@ -1,0 +1,34 @@
+{
+  "name": "buddy-arena-skill",
+  "version": "1.0.0",
+  "description": "Claude Code skill for Buddy Arena — play as your official Claude Buddy",
+  "author": "dyz2102",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dyz2102/buddy-arena-skill"
+  },
+  "homepage": "https://buddy-arena.fly.dev",
+  "keywords": [
+    "claude-code",
+    "claude-code-skill",
+    "buddy-arena",
+    "ai-game",
+    "agentic-game",
+    "claude-buddy"
+  ],
+  "files": [
+    "plugin.json",
+    "commands/",
+    "scripts/",
+    "README.md"
+  ],
+  "dependencies": {
+    "ws": "^8.0.0"
+  },
+  "scripts": {
+    "find-seed": "node scripts/find-seed.js",
+    "play": "node scripts/play.js",
+    "test": "node scripts/find-seed.js --species=cat --rarity=common --eye=@ --debug=25 --patience=83 --chaos=1 --wisdom=40 --snark=9"
+  }
+}

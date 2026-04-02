@@ -1,0 +1,12 @@
+{
+  "name": "buddy-arena",
+  "description": "Play Buddy Arena as your official Claude Buddy. Get your arena code or play directly from the terminal.",
+  "version": "1.0.0",
+  "commands": [
+    {
+      "name": "buddy-arena",
+      "description": "Get your Buddy Arena Code or play from the terminal",
+      "user_invocable": true
+    }
+  ]
+}
